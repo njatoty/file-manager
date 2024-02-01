@@ -4,6 +4,7 @@ import FolderItem from './components/FolderItem';
 
 export default function Home() {
   const [currentFolder, setCurrentFolder] = useState<Folder>();
+  const [breadCrumbs, setBreadCrumbs] = useState<Array<Folder>>([]);
   const [folderName, setFolderName] = useState('');
 
   useEffect(() => {
@@ -18,9 +19,11 @@ export default function Home() {
 
   const clickFolder = (folder: Folder) => {
     fetch(`/api/folders?path=${folder?.path}`).then(async data => {
-      const folders: Folder = await data.json();
-      console.log("currentFolder", folders)
-      setCurrentFolder(folders);
+      const folder: Folder = await data.json();
+      setCurrentFolder(folder);
+      // push breadcrumbs
+      if (!breadCrumbs.some(bc => bc.name === folder.name))
+        setBreadCrumbs(prev => [...prev, folder]);
     }).catch(err => {
       console.error(err)
     });
@@ -30,7 +33,15 @@ export default function Home() {
     fetch(`/api/folders?path=${folder?.parent}`).then(async data => {
       const folders: Folder = await data.json();
       setCurrentFolder(folders);
-      console.log("currentFolder", folders)
+      // pop breadcrumbs
+      if (!breadCrumbs.some(bc => bc.name === folder?.name)) {
+        console.log('atos')
+        setBreadCrumbs(prev => {
+          const newArray = [...prev];
+          newArray.pop();
+          return newArray;
+        });
+      }
     }).catch(err => {
       console.error(err)
     });
@@ -64,6 +75,8 @@ export default function Home() {
   
   function renameFolder(folder: Folder, folderName: string) {
     let folderPath = folder.path;
+    // if name not change
+    if (folderName === folder.name) return;
 
     fetch('/api/folders/update', {
       method: 'post',
@@ -101,6 +114,12 @@ export default function Home() {
           Create folder
         </button>
       </div>
+      <div className="flex items-center gap-2">
+        {
+          breadCrumbs.map((bc, index) => <button key={`${bc.id}-${index}`} onClick={() => clickFolder(bc)} className='text-sm breadcrumbs'>{bc.name}</button>)
+        }
+      </div>
+      <div className="flex flex-col justify-start gap-1">
       {
         currentFolder && currentFolder.children.map(folder =>
           <FolderItem key={folder.id} folder={folder}
@@ -109,6 +128,7 @@ export default function Home() {
           />
         )
       }
+      </div>
       
       {
         (currentFolder && currentFolder.path && !currentFolder.isRoot) &&
