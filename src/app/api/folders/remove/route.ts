@@ -4,16 +4,15 @@ import path from 'path';
 export async function DELETE(req: Request) {
     const { selectedFolders } = await req.json();
     
-    // if folder
-    if (selectedFolders.isDirectory) {
-      selectedFolders.map(async (folder: Folder) => {
+    selectedFolders.map(async (folder: Folder) => {
+      // if folder
+      if (folder.isDirectory) 
         await removeFolderRecursive(folder.path);
-      });
-    } else {
-      selectedFolders.map(async (file: Folder) => await fs.unlinkSync(file.path))
-    }
-
-    // folder exists
+      else
+        await fs.unlinkSync(folder.path)
+    });
+    
+    
     return new Response(JSON.stringify({
         ok: true,
         message: "Success",

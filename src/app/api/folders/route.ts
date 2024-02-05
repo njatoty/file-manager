@@ -1,5 +1,6 @@
 // pages/api/getDirectoryStructure.js
 
+import { getMimeType } from '@/app/utils/utils';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import { NextApiRequest, NextApiResponse } from 'next';
@@ -59,7 +60,9 @@ async function getDirectoryStructure(directoryPath: string) {
             children: [],
             parent: parentPath,
             path: filePath,
-            isRoot: poped === BASE_DIRECTORY
+            isRoot: poped === BASE_DIRECTORY,
+            type: getMimeType(path.extname(filePath)),
+            size: fileStats.size || 0
         };
 
         if (fileStats.isDirectory()) {

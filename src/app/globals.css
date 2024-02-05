@@ -30,6 +30,7 @@ body {
   .breadcrumbs {
     position: relative;
     color: #666;
+    user-select: none;
   }
   
   .breadcrumbs:hover {
@@ -46,5 +47,32 @@ body {
     left: -0.6rem;
     transform: translateY(-50%) translateX(-100%);
     color: #fff;
+  }
+  .explorer-menu {
+    @apply py-2 flex flex-wrap items-stretch justify-end gap-2 ;
+  }
+  .explorer-menu button {
+    @apply py-1 px-3 text-sm rounded-lg border border-gray-800 text-gray-500
+    hover:border-cyan-800 hover:text-white transition-all duration-300
+    active:scale-95 active:border-emerald-600 overflow-hidden min-w-32
+    flex items-center gap-2 flex-1
+    disabled:grayscale disabled:cursor-not-allowed disabled:!text-gray-600 disabled:!border-gray-800;
+  }
+  .explorer-menu button > img {
+    @apply w-6 h-6;
+  }
+
+  .folder-item input, .folder-item textarea {
+    @apply text-rose-500 read-only:text-white;
+  }
+
+  .explorer-modal {
+    @apply fixed inset-0 w-full h-full bg-black/60 flex items-center justify-center;
+  }
+  .explorer-body {
+    @apply relative p-1 flex flex-col border;
+  }
+  .explorer-body > button.close {
+    @apply absolute right-1 top-1;
   }
 }
