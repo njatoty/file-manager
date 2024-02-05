@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://unpkg.com/knockout/build/output/knockout-latest.js"></script>
+    <script src="https://unpkg.com/survey-core@1.9.128/survey.core.min.js"></script>
+    <script src="https://unpkg.com/survey-core@1.9.128/survey.i18n.min.js"></script>
+    <script src="https://unpkg.com/survey-core@1.9.128/themes/index.min.js"></script>
+    <script src="https://unpkg.com/survey-knockout-ui@1.9.128/survey-knockout-ui.min.js"></script>
+    <script src="https://unpkg.com/survey-creator-core@1.9.128/survey-creator-core.min.js"></script>
+    <script src="https://unpkg.com/survey-creator-core@1.9.128/survey-creator-core.i18n.min.js"></script>
+    <script src="https://unpkg.com/survey-creator-core@1.9.128/themes/index.min.js"></script>
+    <script src="https://unpkg.com/survey-creator-knockout@1.9.128/survey-creator-knockout.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/survey-core@1.9.128/defaultV2.css" />
+    <link rel="stylesheet" href="https://unpkg.com/survey-creator-core@1.9.128/survey-creator-core.css" />
+    <link rel="stylesheet" href ="./index.css" />
+  </head>
+  <body>
+    <!-- Uncomment to use Ace Editor in JSON tab
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.10/ace.min.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.10/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.10/ext-searchbox.min.js" type="text/javascript" charset="utf-8" ></script>
+    -->
+    
+    <div id="surveyCreatorContainer" style="position: absolute; height: 100%; width: 100%"></div>
+    
+    <script>
+        const options = {
+            showLogicTab: true
+        };
+        const creator = new SurveyCreator.SurveyCreator(options);
+        creator.onUploadFile.add(function (_, options) {
+            const formData = new FormData();
+
+            options.files.forEach(function (file) {
+                formData.append(file.name, file);
+            });
+            fetch("https://api.surveyjs.io/private/Surveys/uploadTempFiles", {
+                method: "post",
+                body: formData
+            }).then((response) => response.json())
+                .then((result) => {
+                    options.callback(
+                        "success",
+                        // A link to the uploaded file
+                        "https://api.surveyjs.io/private/Surveys/getTempFile?name=" + result[options.files[0].name]
+                    );
+                })
+                .catch((error) => {
+                    options.callback('error');
+                });
+        });
+
+        creator.JSON = {
+            "elements": [
+                {
+                    "type": "image",
+                    "name": "question1",
+                    "imageLink": "https://surveyjs.io/Content/Images/examples/image-picker/lion.jpg"
+                }
+            ]
+        };
+
+        creator.render("surveyCreatorContainer");
+
+    </script>
+  </body>
+</html>

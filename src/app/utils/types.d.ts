@@ -5,11 +5,13 @@ type Folder = {
     children: Array<any>
     parent?: string,
     path: string,
-    isRoot: boolean
+    isRoot: boolean,
+    type?: string,
+    size?: number
 }
 
 type FolderResp = {
     ok: boolean,
     folderInfo: Folder,
-    message?: string
+    message?: string,
 }

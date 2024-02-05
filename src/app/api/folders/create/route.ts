@@ -5,7 +5,8 @@ import path from 'path';
 
 export async function POST(req: Request) {
     const { folderPath, folderName } = await req.json();
-    let newFolderPath = path.join(folderPath, folderName);
+    let trimedFolderName = folderName.trim();
+    let newFolderPath = path.join(folderPath, trimedFolderName);
     
     if (!fs.existsSync(newFolderPath)) {
         await fs.mkdirSync(newFolderPath);
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
 
         const folderInfo: Folder = {
             id: randomUUID(),
-            name: folderName,
+            name: trimedFolderName,
             isDirectory: fileStats.isDirectory(),
             children: [],
             parent: getParentPath(newFolderPath),
