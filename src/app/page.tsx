@@ -6,6 +6,12 @@ import FileItem from './components/FileItem';
 import { ArrowLeftIcon, ArrowUpIcon, DeleteFolderIcon, GridViewIcon, ListViewIcon, NewFolderIcon, RefreshIcon, UploadFileIcon, UploadFolderIcon, getPathFromPublic, sortByType } from './utils/utils';
 import FileInProgress from './components/FileInProgress';
 import { randomUUID } from 'crypto';
+import { useClickAway } from '@uidotdev/usehooks';
+import Image from 'next/image';
+import Lightbox, { SlideImage } from "yet-another-react-lightbox";
+import BreadCrumb from './components/BreadCrumb';
+import "yet-another-react-lightbox/styles.css";
+import { Thumbnails, Zoom, Video } from 'yet-another-react-lightbox/plugins';
 
 export default function Home() {
   const [currentFolder, setCurrentFolder] = useState<Folder>();
@@ -20,9 +26,19 @@ export default function Home() {
   const [playedFile, setPlayedFile] = useState<Folder | null>(null);
   const importFilesRef = useRef<HTMLInputElement>(null);
   const importFoldersRef = useRef<HTMLInputElement>(null);
+  const [slides, setSlides] = useState<SlideImage[]>([]);
+  const modalRef = useClickAway<HTMLDivElement>((ev) => {
+    let target = ev.target as HTMLElement;
+    if (!target.closest('.explorer-modal')) {
+      console.log(target.closest('.explorer-body'))
+      // setIsReading(false);
+      // setPlayedFile(null);
+    }
+  });
 
 
   useEffect(() => {
+    setIsRefreshing(true); 
     fetch(`/api/folders`).then(async data => {
       const folders: Folder = await data.json();
       setCurrentFolder(folders);
@@ -30,8 +46,21 @@ export default function Home() {
       setBreadCrumbs([folders]);
     }).catch(err => {
       console.error(err)
-    });
+    }).finally(() => setIsRefreshing(false));
   }, [])
+
+  useEffect(() => {
+    if (currentFolder?.children) {
+      let images = currentFolder.children.filter(e => e.type === 'image');
+      let data: SlideImage[] = images.map(e => ({
+        src: getPathFromPublic(e.path),
+        alt: 'My image',
+        srcSet: images.map(e => ({ src: getPathFromPublic(e.path)}))
+      }) as SlideImage);
+
+      setSlides(data)
+    }
+  }, [currentFolder])
 
   const clickFolder = (folder: Folder, fromBreadCrumbs?: boolean) => {
     setIsRefreshing(true);
@@ -207,7 +236,6 @@ export default function Home() {
     setIsDragEnter(false);
     
     const files = event.dataTransfer.files;
-    console.log(files)
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setFoldersInProgress(prev => [...prev, {
@@ -265,9 +293,38 @@ export default function Home() {
 
   // read image, video
   function handleReadFile(folder: Folder) {
-    setIsReading(true);
     setPlayedFile(folder);
+    // set slides
+    let slidesData = [folder, ...currentFolder!.children.filter(e => e.type === folder.type && folder.name !== e.name)];
+
+    if (folder.type === 'image') {
+      
+      let images: SlideImage[] = slidesData.map(e => ({
+        type: e.type,
+        src: getPathFromPublic(e.path),
+        alt: e.name,
+      }) as SlideImage);
+      setSlides(images);
+    } else if (folder.type === 'video') {
+      
+      let videos: SlideImage[] = slidesData.map(e => ({
+        type: folder.type,
+        src: '',
+        alt: e.name,
+        sources: [
+          {
+            src: getPathFromPublic(e.path),
+            type: "video/mp4",
+          },
+        ],
+      }) as SlideImage);
+      setSlides(videos);
+
+    }
+    setIsReading(true);
+
   }
+  
   function handleCloseReadFile() {
     setIsReading(false);
     setPlayedFile(null);
@@ -278,8 +335,29 @@ export default function Home() {
     uploadFiles(event.target.files!);
   } 
 
+  function handleMoveFolder(folderSource: Folder, folderDestination: Folder) {
+    fetch(`/api/folders/move`, {
+      method: 'post',
+      body: JSON.stringify({
+        folderSource: folderSource.path,
+        folderDestination: folderDestination.path
+      })
+    }).then (async res => {
+      let response = await res.json();
+      if (response.ok) {
+        // remove the moved folder in view
+        setCurrentFolder(prev => (
+          {...prev!, children: [...prev?.children!].filter(c => c.path !== folderSource.path)}
+        ));
+      }
+      console.log(response)
+    }).catch(err => {
+      console.error(err);
+    })
+  }
+
   return (
-    <main className="flex min-h-screen flex-col justify-start gap-2 p-2 md:p-12 xl:p-24 relative">
+    <main className="flex min-h-screen flex-col justify-start gap-2 p-2 md:p-12 relative">
       <div className={`flex flex-col min-h-screen p-2 border-2 border-dashed ${isDragEnter ? 'border-gray-800' : 'border-transparent'}`}
         onDrop={handleDropFile} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
         onDragEnter={() => setIsDragEnter(true)} onDragLeave={() => setIsDragEnter(false)}
@@ -340,7 +418,13 @@ export default function Home() {
           }
           <div className='flex items-center gap-2 w-full border border-gray-800 p-1 px-2'>
             {
-              breadCrumbs.map((bc, index) => <button key={`${bc.id}-${index}`} onClick={() => clickFolder(bc, true)} className='text-sm breadcrumbs'>{bc.name}</button>)
+              breadCrumbs.map((bc, index) => <BreadCrumb key={`${bc.id}-${index}`}
+                  onClick={() => clickFolder(bc, true)}
+                  folder={bc}
+                  onDropFile={handleMoveFolder}
+                >
+                  {bc.name}
+                </BreadCrumb>)
             }
           </div>
           {/* New Folder Button */}
@@ -359,7 +443,7 @@ export default function Home() {
           {/* Delete Folder Button */}
           {
             selectedFolders.length > 0 && 
-            <button className='border border-gray-800 p-1 px-2 text-sm hover:bg-emerald-950 flex-1 min-w-10'
+            <button className='border border-gray-800 p-1 px-2 text-sm hover:bg-emerald-950 flex-1 min-w-10 delete-btn'
               onClick={deleteFolders}
             >
               <div className='w-full h-full'
@@ -385,6 +469,7 @@ export default function Home() {
                 onRenameFolder={renameFolder}
                 onSelect={selectFolder}
                 isLargeIcon={isLargeIcon}
+                onDropFile={handleMoveFolder}
               /> :
               <FileItem key={folder.id} folder={folder} index={i}
                 onRenameFolder={renameFolder}
@@ -411,15 +496,34 @@ export default function Home() {
         </div>
 
       </div>
-      {
-        isReading && 
-        <div className="explorer-modal">
-          <div className='explorer-body'>
-            <button className="close" onClick={handleCloseReadFile}>X</button>
-            { playedFile && <iframe src={getPathFromPublic(playedFile.path!)} frameBorder="0" className='w-full'></iframe>}
-          </div>
+
+      {/* ligh box carousel */}
+      <div className={`explorer-modal ${isReading ? 'show' : 'hidden'}`}>
+        <div className='explorer-body' ref={modalRef}>
+          {
+            // Image
+            playedFile?.type === 'image' ?
+            <Lightbox
+              plugins={[Zoom, Thumbnails]}
+              open={isReading}
+              close={() => setIsReading(false)}
+              slides={slides}
+            /> :
+            // video
+            playedFile?.type === 'video' ?
+            <Lightbox
+              plugins={[Video]}
+              open={isReading}
+              video={{
+                autoPlay: true,
+              }}
+              close={() => setIsReading(false)}
+              slides={slides}
+            />
+            : <></>
+          }
         </div>
-      }
+      </div>
     </main>
   )
 }
