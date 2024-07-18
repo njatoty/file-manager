@@ -8,7 +8,7 @@ import path from 'path';
 
 const BASE_DIRECTORY = '_sources';
 
-export async function GET(req: NextApiRequest) {
+export async function GET(req: Request) {
     const { searchParams } = new URL(req.url!);
     const path_params = searchParams.get('path') || path.join(process.cwd(), 'public', BASE_DIRECTORY);
     if (!path_params) {
